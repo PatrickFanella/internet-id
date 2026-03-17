@@ -1,0 +1,158 @@
+"use client";
+import React, { useState } from "react";
+import LoadingSpinner from "../components/LoadingSpinner";
+import ErrorMessage from "../components/ErrorMessage";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
+
+export default function VerifyPage() {
+  const [url, setUrl] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [platformId, setPlatformId] = useState("");
+  const [data, setData] = useState<any>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [resolveLoading, setResolveLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runResolve = async () => {
+    try {
+      setResolveLoading(true);
+      setError(null);
+      setData(null);
+      const qs = url
+        ? `url=${encodeURIComponent(url)}`
+        : `platform=${encodeURIComponent(
+            platform
+          )}&platformId=${encodeURIComponent(platformId)}`;
+      const r = await fetch(`${API_BASE}/api/public-verify?${qs}`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "Resolve failed");
+      setData(j);
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    } finally {
+      setResolveLoading(false);
+    }
+  };
+
+  const runByteVerify = async () => {
+    if (!file || !data?.registryAddress || !data?.manifestURI) return;
+    try {
+      setVerifyLoading(true);
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("registryAddress", data.registryAddress);
+      fd.append("manifestURI", data.manifestURI);
+      const r = await fetch(`${API_BASE}/api/verify`, {
+        method: "POST",
+        body: fd,
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "Verify failed");
+      alert(
+        j?.status === "OK"
+          ? "Byte-level verification OK ✅"
+          : `Verification ${j?.status}`
+      );
+    } catch (e: any) {
+      alert(`Verification error: ${e?.message || String(e)}`);
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: 12, maxWidth: 860, margin: "0 auto", width: "100%" }}>
+      <h1>Verify content</h1>
+      <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+        <label>Paste platform URL</label>
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=..."
+          style={{ width: "100%" }}
+        />
+        <div style={{ color: "#999", fontSize: "14px" }}>or choose platform + ID</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+            style={{ flex: "1", minWidth: "150px" }}
+          >
+            <option value="">Select platform</option>
+            <option value="youtube">YouTube</option>
+            <option value="tiktok">TikTok</option>
+            <option value="instagram">Instagram</option>
+            <option value="x">X/Twitter</option>
+            <option value="vimeo">Vimeo</option>
+            <option value="generic">Generic</option>
+          </select>
+          <input
+            value={platformId}
+            onChange={(e) => setPlatformId(e.target.value)}
+            placeholder="platform id or URL"
+            style={{ flex: "2", minWidth: "200px" }}
+          />
+        </div>
+        <button onClick={runResolve} disabled={resolveLoading} style={{ width: "100%" }}>
+          {resolveLoading ? <LoadingSpinner size="sm" inline message="Resolving..." /> : "Resolve"}
+        </button>
+      </div>
+
+      {error && <ErrorMessage error={error} onRetry={runResolve} />}
+      {data && (
+        <div style={{ marginTop: 16 }}>
+          <h3>Binding</h3>
+          <pre
+            style={{
+              background: "#111",
+              color: "#9ef",
+              padding: 12,
+              borderRadius: 8,
+              overflowX: "auto",
+              fontSize: "13px",
+            }}
+          >
+            {JSON.stringify(
+              {
+                platform: data.platform,
+                platformId: data.platformId,
+                creator: data.creator,
+                contentHash: data.contentHash,
+                manifestURI: data.manifestURI,
+                timestamp: data.timestamp,
+              },
+              null,
+              2
+            )}
+          </pre>
+
+          <h3>Manifest (from IPFS)</h3>
+          <pre
+            style={{
+              background: "#111",
+              color: "#9ef",
+              padding: 12,
+              borderRadius: 8,
+              overflowX: "auto",
+              fontSize: "13px",
+            }}
+          >
+            {JSON.stringify(data.manifest ?? null, null, 2)}
+          </pre>
+
+          <h3>Optional: Byte-level verify</h3>
+          <input
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            style={{ width: "100%" }}
+          />
+          <button onClick={runByteVerify} disabled={!file || verifyLoading} style={{ width: "100%", marginTop: "8px" }}>
+            {verifyLoading ? <LoadingSpinner size="sm" inline message="Verifying..." /> : "Verify file against manifest + on-chain"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

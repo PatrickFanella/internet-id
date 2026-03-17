@@ -1,0 +1,99 @@
+# Dockerfile for Internet-ID API Server
+# Multi-stage build for optimized production image
+
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install production dependencies only
+RUN npm ci --legacy-peer-deps --only=production
+
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+COPY tsconfig.build.json ./
+
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci --legacy-peer-deps
+
+# Copy application files
+COPY scripts ./scripts
+COPY contracts ./contracts
+COPY prisma ./prisma
+COPY config ./config
+COPY hardhat.config.ts ./
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Compile contracts
+RUN npm run build
+
+# Compile TypeScript to JavaScript (ignore type errors)
+RUN npx tsc -p tsconfig.build.json || true && \
+    if [ ! -f dist/scripts/start-api-server.js ]; then \
+      echo "Build failed: expected dist/scripts/start-api-server.js was not generated"; \
+      exit 1; \
+    fi
+
+# Generate Prisma client again to ensure it's in node_modules
+RUN npx prisma generate
+
+# Stage 3: Production runner
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Install runtime dependencies only
+RUN apk add --no-cache bash
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Copy production dependencies and Prisma client from builder stage
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+
+# Remove devDependencies from production image to save space
+RUN npm prune --production --legacy-peer-deps || rm -rf node_modules/ts-node node_modules/typescript node_modules/@types/node
+
+# Copy built artifacts from builder stage
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/contracts ./contracts
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/typechain-types ./typechain-types
+COPY --from=builder /app/artifacts ./artifacts
+COPY --from=builder /app/scripts ./scripts
+
+# Set ownership
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose API port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start API server
+CMD ["node", "dist/scripts/start-api-server.js"]

@@ -1,0 +1,470 @@
+/* Mobile-first responsive design */
+* {
+  box-sizing: border-box;
+}
+
+/* Optimize font rendering */
+html {
+  font-display: swap;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Skip to main content link - WCAG 2.1 AA requirement */
+.skip-to-content {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 10000;
+  font-weight: 600;
+  border-radius: 0 0 4px 0;
+}
+
+.skip-to-content:focus {
+  top: 0;
+}
+
+/* Enhanced focus indicators for accessibility - WCAG 2.1 AA requirement */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+}
+
+/* Ensure focus is visible for keyboard users */
+*:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+}
+
+/* Remove outline for mouse users but keep for keyboard */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Ensure sufficient color contrast for links - WCAG 2.1 AA requirement */
+a {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+a:hover {
+  color: #1e40af;
+}
+
+a:visited {
+  color: #7c3aed;
+}
+
+/* Button hover/active states with sufficient contrast */
+button:not(:disabled):hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+button:not(:disabled):active {
+  background: #e5e7eb;
+  border-color: #6b7280;
+}
+
+/* Font rendering and performance already optimized above */
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  /* Prevent horizontal scrolling */
+  overflow-x: hidden;
+  min-width: 320px;
+}
+
+main {
+  /* Mobile-first: smaller padding on mobile */
+  padding: 12px;
+  max-width: 960px;
+  margin: 0 auto;
+  /* Prevent content from causing horizontal scroll */
+  width: 100%;
+}
+
+/* Tablet and larger screens */
+@media (min-width: 640px) {
+  main {
+    padding: 24px;
+  }
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 16px 0;
+  word-wrap: break-word;
+}
+
+/* Tablet and larger */
+@media (min-width: 640px) {
+  h1 {
+    font-size: 2rem;
+  }
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin: 0 0 12px 0;
+  word-wrap: break-word;
+}
+
+h3 {
+  font-size: 1.125rem;
+  margin: 12px 0 8px 0;
+  word-wrap: break-word;
+}
+
+section {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+  /* Prevent section overflow */
+  overflow-x: auto;
+}
+
+/* Larger padding on tablets+ */
+@media (min-width: 640px) {
+  section {
+    padding: 16px;
+    margin: 16px 0;
+  }
+}
+
+/* Form controls with mobile-first touch targets */
+input,
+button,
+select,
+textarea {
+  /* Minimum 44x44px touch target for accessibility */
+  min-height: 44px;
+  padding: 10px 12px;
+  margin: 4px 0;
+  font-size: 16px; /* Prevents iOS zoom on focus */
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  /* Prevent text overflow */
+  max-width: 100%;
+}
+
+input[type="file"] {
+  padding: 8px;
+  min-height: 44px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  min-height: auto;
+  width: 20px;
+  height: 20px;
+  margin: 0 8px 0 0;
+  cursor: pointer;
+}
+
+input[type="number"] {
+  max-width: 120px;
+}
+
+button {
+  cursor: pointer;
+  background: #fff;
+  white-space: nowrap;
+  /* Prevent button text from wrapping on mobile unless needed */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Button hover/active states defined above in accessibility section */
+
+textarea {
+  font-family: monospace;
+  resize: vertical;
+  min-height: 88px;
+}
+
+select {
+  cursor: pointer;
+  background: #fff;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-top: 8px;
+  word-wrap: break-word;
+}
+
+/* Responsive layout utilities */
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  /* Allow wrapping on mobile */
+  flex-wrap: wrap;
+}
+
+/* Larger gap on tablets+ */
+@media (min-width: 640px) {
+  .row {
+    gap: 12px;
+  }
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Responsive tabs - wrap on mobile, horizontal scroll as fallback */
+.tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  /* Prevent horizontal overflow */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar for cleaner look */
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+
+@media (min-width: 640px) {
+  .tabs {
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+}
+
+.tabs button {
+  padding: 10px 14px;
+  min-height: 44px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  /* Prevent buttons from shrinking too much */
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.tabs button.active {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+
+/* Responsive images and media */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Responsive pre/code blocks */
+pre {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  max-width: 100%;
+  word-wrap: break-word;
+  white-space: pre;
+}
+
+@media (min-width: 640px) {
+  pre {
+    font-size: 14px;
+  }
+}
+
+code {
+  font-size: 0.875em;
+  word-wrap: break-word;
+}
+
+/* Responsive links - styles defined above for better contrast */
+a {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Lists - ensure proper spacing */
+ul, ol {
+  padding-left: 20px;
+}
+
+@media (min-width: 640px) {
+  ul, ol {
+    padding-left: 24px;
+  }
+}
+
+li {
+  margin: 8px 0;
+  word-wrap: break-word;
+}
+
+/* Utility classes for responsive visibility */
+.mobile-only {
+  display: block;
+}
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* Ensure iframes are responsive */
+iframe {
+  max-width: 100%;
+}
+
+/* Responsive tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Table responsive wrapper utility */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+  table {
+    display: table;
+  }
+}
+
+/* Legal pages styling */
+.legal-page {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #333;
+}
+
+.legal-page h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #111;
+}
+
+.legal-page h2 {
+  font-size: 1.75rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: #222;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 0.5rem;
+}
+
+.legal-page h3 {
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #333;
+}
+
+.legal-page .last-updated {
+  font-style: italic;
+  color: #666;
+  margin-bottom: 2rem;
+  font-size: 0.875rem;
+}
+
+.legal-page section {
+  margin-bottom: 2rem;
+  border: none;
+  padding: 0;
+}
+
+.legal-page ul,
+.legal-page ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.legal-page li {
+  margin: 0.5rem 0;
+}
+
+.legal-page p {
+  margin: 1rem 0;
+}
+
+.legal-page a {
+  color: #0070f3;
+  text-decoration: underline;
+}
+
+.legal-page a:hover {
+  color: #0051cc;
+}
+
+.legal-page table {
+  margin: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.legal-page th {
+  font-weight: 600;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+  }
+  
+  .tabs,
+  button:not(.print-show),
+  .site-footer,
+  .cookie-consent {
+    display: none;
+  }
+  
+  .legal-page {
+    max-width: 100%;
+  }
+}
+
+/* Language switcher positioning */
+.language-switcher-wrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}

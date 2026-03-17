@@ -1,0 +1,252 @@
+// This file contains the Prisma schema definition for Internet-ID
+//
+// DUAL GENERATOR SETUP:
+// This schema uses two Prisma Client generators for different parts of the application:
+//
+// 1. "client" - Default generator for API/scripts (outputs to root node_modules)
+//    Used by: Express API server, CLI scripts, verification workers, queue services
+//    Location: node_modules/.prisma/client
+//
+// 2. "client-web" - Web app generator (outputs to web/node_modules)
+//    Used by: Next.js web application (web/ directory)
+//    Location: web/node_modules/.prisma/client
+//
+// WHY TWO GENERATORS?
+// - Next.js app runs in a separate process with its own node_modules
+// - The web app needs Prisma Client in its node_modules for deployment
+// - API server and scripts share the root Prisma Client
+// - This avoids module resolution issues and keeps deployments clean
+//
+// IMPORTANT: Both generators read from the same schema and database
+// Run `npm run db:generate` to regenerate both Prisma Clients after schema changes
+
+// Default generator for API/scripts (root node_modules)
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Generator for Next.js web app (web/node_modules)
+generator client-web {
+  provider = "prisma-client-js"
+  output   = "../web/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String            @id @default(cuid())
+  address          String?           @unique
+  email            String?           @unique
+  name             String?
+  image            String?
+  emailVerified    DateTime?
+  createdAt        DateTime          @default(now())
+  contents         Content[]
+  accounts         Account[]
+  sessions         Session[]
+  apiKeys          ApiKey[]
+  emailPreferences EmailPreferences?
+  emailLogs        EmailLog[]
+
+  @@index([createdAt])
+}
+
+model Content {
+  id              String            @id @default(cuid())
+  contentHash     String            @unique
+  contentUri      String?
+  manifestCid     String?
+  manifestUri     String?
+  creatorAddress  String
+  creatorId       String?
+  creator         User?             @relation(fields: [creatorId], references: [id])
+  registryAddress String?
+  txHash          String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  bindings        PlatformBinding[]
+  verifications   Verification[]
+
+  @@index([creatorId])
+  @@index([createdAt])
+  @@index([creatorAddress])
+}
+
+model PlatformBinding {
+  id         String   @id @default(cuid())
+  platform   String
+  platformId String
+  content    Content? @relation(fields: [contentId], references: [id])
+  contentId  String?
+  createdAt  DateTime @default(now())
+
+  @@unique([platform, platformId])
+  @@index([contentId])
+  @@index([platform])
+  @@index([createdAt])
+}
+
+model Verification {
+  id               String   @id @default(cuid())
+  contentHash      String
+  manifestUri      String
+  recoveredAddress String
+  creatorOnchain   String
+  status           String
+  createdAt        DateTime @default(now())
+  contentId        String?
+  content          Content? @relation(fields: [contentId], references: [id])
+
+  @@index([createdAt])
+  @@index([contentId])
+  @@index([contentHash, createdAt])
+  @@index([status, createdAt])
+}
+
+// NextAuth models
+model Account {
+  id                       String   @id @default(cuid())
+  userId                   String
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  refresh_token_expires_in Int?
+  session_state            String?
+  oauth_token              String?
+  oauth_token_secret       String?
+  // Optional convenience fields for display/matching
+  username                 String?
+  url                      String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@index([userId, provider])
+  @@index([username])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expires])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  key        String    @unique // hashed API key
+  name       String? // optional name for the key
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier       String    @default("free") // free, paid
+  rateLimit  Int       @default(100) // requests per minute
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([key, isActive])
+  @@index([expiresAt])
+}
+
+// Email notification preferences per user
+model EmailPreferences {
+  id                           String    @id @default(cuid())
+  userId                       String    @unique
+  user                         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Notification type opt-ins
+  welcomeEmails                Boolean   @default(true)
+  verificationUpdates          Boolean   @default(true)
+  platformBindingConfirmations Boolean   @default(true)
+  transactionNotifications     Boolean   @default(true)
+  securityAlerts               Boolean   @default(true)
+  // Frequency control
+  frequency                    String    @default("immediate") // immediate, daily_digest
+  // Global unsubscribe
+  unsubscribedAt               DateTime?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([unsubscribedAt])
+}
+
+// Email delivery tracking and logging
+model EmailLog {
+  id           String    @id @default(cuid())
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  recipient    String // email address
+  subject      String
+  templateType String // welcome, verification_success, etc.
+  status       String // queued, sent, delivered, bounced, failed
+  provider     String? // sendgrid, postmark, ses, smtp
+  providerId   String? // external provider message ID
+  error        String?
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  bouncedAt    DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  retryCount   Int       @default(0)
+  metadata     String? // JSON string for additional context
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@index([templateType, createdAt])
+  @@index([recipient])
+}
+
+// Verification job tracking for async verification queue
+model VerificationJob {
+  id              String    @id @default(cuid())
+  jobId           String    @unique // BullMQ job ID
+  type            String // "verify" or "proof"
+  contentHash     String?
+  manifestUri     String
+  registryAddress String
+  rpcUrl          String?
+  status          String // "queued", "processing", "completed", "failed"
+  result          String? // JSON string of verification result
+  error           String?
+  retryCount      Int       @default(0)
+  progress        Int       @default(0) // 0-100 percentage
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([jobId])
+  @@index([status, createdAt])
+  @@index([contentHash])
+  @@index([createdAt])
+}
